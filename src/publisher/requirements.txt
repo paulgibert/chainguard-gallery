@@ -1,0 +1,7 @@
+pymongo==4.*
+Flask==3.*
+gunicorn==21.*
+google-cloud-tasks==2.*
+google-auth==2.*
+google-auth-httplib2==0.*
+google-auth-oauthlib==0.*
