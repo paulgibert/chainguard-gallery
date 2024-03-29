@@ -48,7 +48,8 @@ def init_table(images: Cursor) -> Dict[str, int]:
 class ProgressReport:
     timestamp: datetime
     total_scans: int
-    redundant_scans: Dict[str, int]
+    total_images: int
+    repeat_scans: Dict[str, int]
     missing_scans: List[str]
     unprompted_scans: List[str]
     scan_duration: int

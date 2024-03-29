@@ -4,7 +4,7 @@ resource "google_cloud_run_service" "scanner" {
   template {
     spec {
       containers {
-        image = "${var.location}-docker.pkg.dev/${var.project}/${var.image_repository}/scanner:latest"
+        image = "${var.location}-docker.pkg.dev/${var.project}/${var.image_repository}/parser:latest"
         resources {
           limits = {
             cpu = 4

@@ -18,11 +18,6 @@ variable "image_repository" {
     type = string
 }
 
-variable "queue_name" {
-  description = "The name of the Cloud Tasks queue that holds pending scans"
-  type = string
-}
-
 variable "publisher_env_vars" {
     description = "A map of environment variables for the publisher service"
     type = map(string)

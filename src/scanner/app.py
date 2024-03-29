@@ -2,7 +2,7 @@
 from typing import Dict, Tuple, List
 import os
 import json
-import time
+from datetime import datetime, timezone
 import logging
 from dataclasses import dataclass, asdict
 
@@ -10,11 +10,12 @@ from dataclasses import dataclass, asdict
 # import google.cloud.logging
 from pymongo import MongoClient
 from sh import grype, ErrorReturnCode
+from gryft.scanning.report import GrypeReport
 from flask import Flask, request, jsonify
 
 
 MONGO_DB_NAME = "gallery"
-MONGO_COLLECTION_NAME = "scans"
+MONGO_COLLECTION_NAME = "cves"
 MONGO_URI = os.environ.get("MONGO_URI", None)
 # client = google.cloud.logging.Client()
 # client.setup_logging()
@@ -69,14 +70,17 @@ def scan_image(args: ScanArgs) -> Dict:
         raise RuntimeError(f"Error running grype: {e.stderr}")
 
 
-def store_scan(scan: Dict, scan_start: float, scan_duration: float, args: ScanArgs, client: MongoClient):
+def store_scan(scan: Dict, scan_start: datetime, scan_duration: float, args: ScanArgs, client: MongoClient):
     db = client[MONGO_DB_NAME]
     collection = db[MONGO_COLLECTION_NAME]
 
+    report = GrypeReport.from_json(scan)
+    cves = [asdict(cve) for cve in report.cves]
+
     document = {
-        "grype": scan,
         "scan_start": scan_start,
-        "scan_duration_secs": scan_duration
+        "scan_duration_secs": scan_duration,
+        "cves": cves
     }
 
     for key, value in asdict(args).items():
@@ -89,9 +93,10 @@ def store_scan(scan: Dict, scan_start: float, scan_duration: float, args: ScanAr
 def main():
     try:
         args = parse_args(request.json)
-        scan_start = time.time()
+        scan_start = datetime.now(timezone.utc)
         scan = scan_image(args)
-        scan_duration = round(time.time() - scan_start, 2)
+        scan_end = datetime.now(timezone.utc)
+        scan_duration = (scan_end - scan_start).total_seconds()
         
         if MONGO_URI is None:
             raise ValueError("MONGO_URI not provided")
@@ -100,6 +105,6 @@ def main():
         store_scan(scan, scan_start, scan_duration, args, client)
 
     except Exception as e:
-        error(e, 400)
+        return error(e, 400)
     
     return jsonify({"message": "success"}), 200

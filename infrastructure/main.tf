@@ -43,8 +43,24 @@ resource "google_cloud_scheduler_job" "scheduler" {
   time_zone = "UTC"
 }
 
-resource "google_cloud_tasks_queue" "queue" {
-  name = var.queue_name
+resource "google_cloud_tasks_queue" "scan_queue" {
+  name = "to-scan"
+  location = var.region
+  rate_limits {
+    max_dispatches_per_second = 10
+    max_concurrent_dispatches = 5
+  }
+  retry_config {
+    max_attempts = 16
+    max_retry_duration = "300s"
+    min_backoff = "1s"
+    max_backoff = "60s"
+    max_doublings = 5
+  }
+}
+
+resource "google_cloud_tasks_queue" "parse_queue" {
+  name = "to-parse"
   location = var.region
   rate_limits {
     max_dispatches_per_second = 10
