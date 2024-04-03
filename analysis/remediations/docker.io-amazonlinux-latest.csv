@@ -1,2 +1,0 @@
-id,severity,registry,repository,tag,labels,first_seen_at,remediated_at
-ALAS-2024-573,medium,docker.io,amazonlinux,latest,docker-official,1711138301.819027,1711141283.863498

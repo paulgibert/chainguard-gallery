@@ -17,8 +17,6 @@ from flask import Flask, request, jsonify
 MONGO_DB_NAME = "gallery"
 MONGO_COLLECTION_NAME = "cves"
 MONGO_URI = os.environ.get("MONGO_URI", None)
-# client = google.cloud.logging.Client()
-# client.setup_logging()
 
 app = Flask(__name__)
 

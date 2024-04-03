@@ -1,3 +1,9 @@
+"""
+Pushes a CSV file of images to MongoDB for routine scanning.
+
+Run `python push_images.py --help` for usage.
+"""
+
 # Standard lib
 from typing import Dict
 import os
@@ -6,21 +12,12 @@ import argparse
 import json
 
 # 3rd party
-from sh import docker, ErrorReturnCode
 from pymongo import MongoClient
 
 
 MONGO_URI = os.environ["MONGO_URI"]
 MONGO_DB_NAME = "gallery"
 MONGO_COLLECTION_NAME = "images"
-
-# MAX_IMAGE_SZ = 100000000
-
-
-# def get_image_size(registry: str, repository: str, tag: str) -> int:
-#     json_str = docker("inspect", f"{registry}/{repository}:{tag}")
-#     json_data = json.loads(json_str)
-#     return json_data[0]["Size"]
 
 
 def push_images(images: Dict):

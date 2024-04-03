@@ -1,3 +1,7 @@
+"""
+Lists MCR chiselled images.
+"""
+
 # Standard lib
 from typing import List, Dict
 import re

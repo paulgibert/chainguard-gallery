@@ -1,5 +1,0 @@
-id,severity,registry,repository,tag,labels,first_seen_at,remediated_at
-CVE-2023-42363,medium,docker.io,alpine,latest,docker-official,1711138278.7942116,1711141213.1266124
-CVE-2023-42365,medium,docker.io,alpine,latest,docker-official,1711138278.7942116,1711141213.1266124
-CVE-2023-42364,medium,docker.io,alpine,latest,docker-official,1711138278.7942116,1711141213.1266124
-CVE-2023-42366,medium,docker.io,alpine,latest,docker-official,1711138278.7942116,1711141213.1266124

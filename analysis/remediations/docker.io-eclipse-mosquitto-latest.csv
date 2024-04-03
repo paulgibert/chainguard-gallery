@@ -1,5 +1,0 @@
-id,severity,registry,repository,tag,labels,first_seen_at,remediated_at
-CVE-2023-42363,medium,docker.io,eclipse-mosquitto,latest,docker-official,1711138332.0980155,1711141230.6183257
-CVE-2023-42365,medium,docker.io,eclipse-mosquitto,latest,docker-official,1711138332.0980155,1711141230.6183257
-CVE-2023-42364,medium,docker.io,eclipse-mosquitto,latest,docker-official,1711138332.0980155,1711141230.6183257
-CVE-2023-42366,medium,docker.io,eclipse-mosquitto,latest,docker-official,1711138332.0980155,1711141230.6183257

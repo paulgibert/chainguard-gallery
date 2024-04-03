@@ -1,3 +1,8 @@
+"""
+Searches for and lists docker images.
+See the Makefile for usage examples.
+"""
+
 # Standard lib
 from typing import List, Dict, Tuple
 import argparse
@@ -23,13 +28,18 @@ def print_image(image: Dict):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("query")
+    parser.add_argument("query",
+                        help="The query to use when searching docker hub")
     parser.add_argument("--repository-prefix", "-p",
-            required=False, default=None)
+            required=False, default=None,
+            help="Only list image repositories with this prefix")
     parser.add_argument("--image-filter", "-f",
-            required=False, default=None)
+            required=False, default=None,
+            help="Only list image repositories with this filter. For example, \
+            all docker official images have the `official` filter")
     parser.add_argument("--tags", "-t", required=False,
-            default=None)
+            default=None,
+            help="Only list images with these tags. Tags should be spaced separated")
     return parser.parse_args()
 
 
