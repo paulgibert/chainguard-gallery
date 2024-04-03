@@ -1,0 +1,4 @@
+sh==2.*
+pymongo==4.*
+Flask==3.*
+gunicorn==21.*
