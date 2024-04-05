@@ -1,4 +1,4 @@
-# chainguard-gallery
+# chainguard-gallery (Power Hour)
 
 ### Overview
 ---
