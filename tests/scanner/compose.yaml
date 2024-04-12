@@ -1,10 +1,12 @@
 services:
   scanner:
-    build: ${BASE_PATH}/run/scanner
+    build: ${BASE_PATH}/src/scanner
     ports:
       - "5000:5000"
     environment:
       MONGO_URI: "mongodb://mongo:27017"
+      TIMEOUT: 120
+      PORT: 5000
     command: flask run --host=0.0.0.0 --port=5000
   
   mongo:

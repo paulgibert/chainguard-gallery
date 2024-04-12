@@ -83,7 +83,6 @@ def store_scan(scan: Dict, scan_start: datetime, scan_duration: float, args: Sca
 
     for key, value in asdict(args).items():
         document[key] = value
-
     collection.insert_one(document)
 
 

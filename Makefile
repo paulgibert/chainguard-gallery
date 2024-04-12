@@ -7,22 +7,14 @@ TAG := latest
 
 .PHONY: build-images
 build-images:
-	docker build -t $(PREFIX)/publisher:$(TAG) src/publisher
-	docker build -t $(PREFIX)/scanner:$(TAG) src/scanner
-	docker build -t $(PREFIX)/parser:$(TAG) src/parser
+	docker build --no-cache -t $(PREFIX)/publisher:$(TAG) src/publisher
+	docker build --no-cache -t $(PREFIX)/scanner:$(TAG) src/scanner
 
 .PHONY: push-images
 push-images:
 	docker push $(PREFIX)/publisher:$(TAG)
 	docker push $(PREFIX)/scanner:$(TAG)
-	docker push $(PREFIX)/parser:$(TAG)
 
-.PHONY: run-parser
-build-and-run-parser:
-	docker build -t gallery-parser:local src/parser
-	docker run --rm -it \
-		-p 8000:8080 \
-		-e "MONGO_URI=$(MONGO_URI)" \
-		-e "PORT=8080" \
-		-e "TIMEOUT=600" \
-		gallery-parser:local
+.PHONY: test-scanner
+test-scanner:
+	export BASE_PATH=$$(pwd)/src/scanner docker compose up test/scanner
