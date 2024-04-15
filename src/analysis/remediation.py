@@ -27,9 +27,9 @@ def _validate_scan(scan: Dict, prev_scan: Dict):
         return
     if scan["scan_start"] <= prev_scan["scan_start"]:
         raise ValueError(f"A scan was provided out of order")
-    for key in ["registry", "repository", "tag"]:
-        if scan[key] != prev_scan[key]:
-            raise ValueError(f"Scans from multiple images were provided")
+    # for key in ["registry", "repository", "tag"]:
+    #     if scan[key] != prev_scan[key]:
+    #         raise ValueError(f"Scans from multiple images were provided")
 
 
 def _extract_cves(scan: Dict) -> Set[CVE]:
@@ -91,16 +91,19 @@ def find_image_remediations(scans: Iterable,
     All scans must come from the same image. Scans must be provided
     in order by scan time.
     """
-    tracking_table = {}
+    tracking_table = None
+    omit_list = []
     last_scan = None
     remediations = []
 
     for s in scans:
         _validate_scan(s, last_scan)
 
-        # No need to init tracking table with a scan if not
-        # tracking preexisting CVEs
-        if tracking_table is None and include_preexisting:
+        if tracking_table is None:
+            # No need to init tracking table with a scan if not
+            # tracking preexisting CVEs
+            if not include_preexisting:
+                omit_list = _extract_cves(s)
             tracking_table = _init_tracking_table(s)
             continue
         
@@ -111,8 +114,9 @@ def find_image_remediations(scans: Iterable,
         # Delete remediated CVEs from the tracking table
         remediated_cves = _get_remediated_cves(observed, tracking_table)
         for cve in remediated_cves:
-            r = Remediation(cve, tracking_table[cve], s["scan_start"])
-            remediations.append(r)
+            if cve not in omit_list:
+                r = Remediation(cve, tracking_table[cve], s["scan_start"])
+                remediations.append(r)
             del tracking_table[cve]
         
         # Of the remaining CVEs, update the tacking table]
