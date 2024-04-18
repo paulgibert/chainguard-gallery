@@ -83,27 +83,22 @@ def _get_new_cves(observed: Set[CVE], tracking_table: Dict[CVE, datetime]) -> Se
     return observed - tracking
 
 
-def find_image_remediations(scans: Iterable,
-                            include_preexisting: bool=False,
-                            include_residual: bool=False) -> List[Remediation]:
+def find_image_remediations(scans: Iterable) -> List[Remediation]:
     """
     Finds the remediations in the scans of a single image.
     All scans must come from the same image. Scans must be provided
     in order by scan time.
     """
     tracking_table = None
-    omit_list = []
-    last_scan = None
+    cves_at_start = []
+    prev_scan = None
     remediations = []
 
     for s in scans:
-        _validate_scan(s, last_scan)
+        _validate_scan(s, prev_scan)
 
         if tracking_table is None:
-            # No need to init tracking table with a scan if not
-            # tracking preexisting CVEs
-            if not include_preexisting:
-                omit_list = _extract_cves(s)
+            cves_at_start = _extract_cves(s)
             tracking_table = _init_tracking_table(s)
             continue
         
@@ -114,9 +109,11 @@ def find_image_remediations(scans: Iterable,
         # Delete remediated CVEs from the tracking table
         remediated_cves = _get_remediated_cves(observed, tracking_table)
         for cve in remediated_cves:
-            if cve not in omit_list:
-                r = Remediation(cve, tracking_table[cve], s["scan_start"])
-                remediations.append(r)
+            first_seen_at = tracking_table[cve]
+            if cve in cves_at_start:
+                first_seen_at = None
+            r = Remediation(cve, first_seen_at, s["scan_start"])
+            remediations.append(r)
             del tracking_table[cve]
         
         # Of the remaining CVEs, update the tacking table]
@@ -124,13 +121,14 @@ def find_image_remediations(scans: Iterable,
         new_cves = _get_new_cves(observed, tracking_table)
         for cve in new_cves:
             tracking_table[cve] = s["scan_start"]
-        last_scan = s
+        prev_scan = s
 
-    if (tracking_table is not None) and include_residual:
-        #Consider all remaining CVEs in the table "remediated"
+    # Handle remaining unremediated CVEs
+    if (tracking_table is not None):
         for cve, first_seen_at in tracking_table.items():
-            # TODO: Update this to label non remediated CVEs
-            r = Remediation(cve, first_seen_at, last_scan["scan_start"])
+            if cve in cves_at_start:
+                first_seen_at = None
+            r = Remediation(cve, first_seen_at, None)
             remediations.append(r)
 
     return remediations
