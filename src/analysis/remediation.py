@@ -1,32 +1,92 @@
+"""
+This is THE file that contains the remediation detection
+algorithm. It contains a few classes for representing a scan
+and remediation plus help functions for running the algorithm.
+
+Algorithm outline:
+
+Let T be a `Dict` where:
+    key = A CVE match
+    value = A timestamp for when that match was first observed
+
+Let S be a scan that contains an image name, list of CVE matches, and timestamp.
+
+Let T - S be all of the CVEs in T but not in S. These CVEs have disappeared or "remediatied".
+Let S - T be all of the CVEs in S but not in T. These CVEs are newly discovered in this scan.
+
+Group all scans by image and sort by timestamp starting with the earliest scan.
+
+
+Let R be the set of remedations for a given image.
+
+R = []
+for each S in image:
+    remediated = T - S
+    discovered = S - T
+    
+    for CVE in remediated:
+        R += (CVE, T[CVE], S.timestamp) # A tuple of the CVE and first_seen_at, and remediated_at times.
+        del T[CVE]
+
+    for CVE in discovered:
+        T[CVE] = S.timestamp
+
+return R
+
+Exceptions:
+
+The above pseudocode is the bulk of the algorithm, but there are two special cases.
+
+Case 1: First scan:
+    If we are processing the first scan, we have no idea how long the discovered CVEs have
+    been in the image. We initializes T with these CVEs but with NULL timestamps.
+
+Case 2: Last scan
+    If we are processing the last scan, we have no idea when these CVEs will be remediated.
+    We add these CVEs to R but with NULL remediated_at timestamps.
+"""
+
 # Standard lib
 from typing import Set, Dict, List, Iterable
+import os
 from datetime import datetime
 from dataclasses import dataclass
 
 # 3rd party
+from gryft.scanning.types import CVE, Component
+import pandas as pd
+from pymongo import MongoClient, ASCENDING
+import multiprocess as mp
+from tqdm import tqdm
 
 # Local
-from gryft.scanning.types import CVE, Component
+from .stat import RemediationTable, Remediation, concat
+from .fetch import fetch_images
 
 
 @dataclass(frozen=True)
 class Scan:
+    """
+    Represents a scan.
+
+    scan_start (datetime): The start of the scan.
+    cves (List[CVE]): The list of CVEs observed in the scan.
+    """
     scan_start: datetime
     cves: List[CVE]
 
 
-@dataclass(frozen=True)
-class Remediation:
-    cve: CVE
-    first_seen_at: datetime
-    remediated_at: datetime
-
-
 def _validate_scan(scan: Dict, prev_scan: Dict):
+    """
+    Validates the ordering and contents of a scan.
+    """
     if prev_scan is None:
         return
     if scan["scan_start"] <= prev_scan["scan_start"]:
         raise ValueError(f"A scan was provided out of order")
+    
+    # This check creates performance issues for some weird reason
+
     # for key in ["registry", "repository", "tag"]:
     #     if scan[key] != prev_scan[key]:
     #         raise ValueError(f"Scans from multiple images were provided")
@@ -83,11 +143,17 @@ def _get_new_cves(observed: Set[CVE], tracking_table: Dict[CVE, datetime]) -> Se
     return observed - tracking
 
 
-def find_image_remediations(scans: Iterable) -> List[Remediation]:
+def _collect_image_remediations(scans: Iterable) -> List[Remediation]:
     """
     Finds the remediations in the scans of a single image.
     All scans must come from the same image. Scans must be provided
     in order by scan time.
+
+    Args:
+        scans (Iterable): The scans to search for remediations in.
+    
+    Returns:
+        The list of remediations as a `List[Remediation]`.
     """
     tracking_table = None
     cves_at_start = []
@@ -112,7 +178,9 @@ def find_image_remediations(scans: Iterable) -> List[Remediation]:
             first_seen_at = tracking_table[cve]
             if cve in cves_at_start:
                 first_seen_at = None
-            r = Remediation(cve, first_seen_at, s["scan_start"])
+            r = Remediation(cve=cve,
+                            first_seen_at=first_seen_at,
+                            remediated_at=s["scan_start"])
             remediations.append(r)
             del tracking_table[cve]
         
@@ -128,7 +196,42 @@ def find_image_remediations(scans: Iterable) -> List[Remediation]:
         for cve, first_seen_at in tracking_table.items():
             if cve in cves_at_start:
                 first_seen_at = None
-            r = Remediation(cve, first_seen_at, None)
+            r = Remediation(cve=cve,
+                            first_seen_at=first_seen_at,
+                            remediated_at=None)
             remediations.append(r)
 
     return remediations
+
+
+def _image_handler(image: dict) -> pd.DataFrame:
+    """
+    Collects the remediations from an image's scans.
+    """
+    query = {
+        "registry": image["registry"],
+        "repository": image["repository"],
+        "tag": image["tag"],
+    }
+    with MongoClient(os.environ["MONGO_URI"]) as client:
+        collection = client["gallery"]["cves"]
+        scans = collection.find(query).sort([("scan_start", ASCENDING)])
+        remediations = _collect_image_remediations(scans)
+        return RemediationTable.from_remediations(image, remediations)
+
+
+def fetch_remediations() -> RemediationTable:
+    """
+    Fetches all scans from gallery and computes remediations.
+
+    Returns:
+        A `RemediationTable` of the remediations found.
+    """
+    images = fetch_images()
+
+    with mp.Pool(mp.cpu_count()) as pool:
+        rtables = list(tqdm(pool.imap_unordered(_image_handler, images),
+                        desc=f"Collecting remediations",
+                        total=len(images)))
+    
+    return concat(rtables)

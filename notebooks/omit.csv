@@ -1,0 +1,5 @@
+registry,repository,tag
+cgr.dev,chainguard/git,latest
+cgr.dev,chainguard/busybox,latest
+cgr.dev,chainguard/musl-dynamic,latest
+cgr.dev,chainguard/static,latest
