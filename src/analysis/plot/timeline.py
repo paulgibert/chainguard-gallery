@@ -169,7 +169,8 @@ def _plot_layer(segments: List[_Segment], y: int,
     return y + 1
 
 
-def rtime_timeline(table: RemediationTable, figsize: Tuple[int, int]=None, include_cve_ids: bool=True):
+def rtime_timeline(table: RemediationTable, figsize: Tuple[int, int]=None, include_cve_ids: bool=True,
+                   max_images: int=5):
     """
     Plots a timeline of all remediations per image. The x axis is time, the y axis is
     image. This plot assumes the table represents a single registry.
@@ -178,6 +179,7 @@ def rtime_timeline(table: RemediationTable, figsize: Tuple[int, int]=None, inclu
         table (RemediationTable): The table of remediations to plot.
         figsize (Tuple[int, int], optional): The figure size akin to matplotlib's `figsize` param.
         include_cve_ids (bool, optional): If `True`, CVE ids will be displayed on the plot.
+        max_images (int, optional): Limits the number of images that appear in the timeline.
     """
     
     if figsize is None:
@@ -190,7 +192,14 @@ def rtime_timeline(table: RemediationTable, figsize: Tuple[int, int]=None, inclu
     ytick_labels = []
 
     y = 0
-    for repo in table._df["repository"].unique():
+
+    # Define images to plot
+    repositories = table._df["repository"].unique()
+    if len(repositories) > max_images:
+        repositories = repositories[:max_images]
+
+    # Plot images
+    for repo in repositories:
         repo_df = table._df[table._df["repository"] == repo]
         start_y = y
 
@@ -210,6 +219,8 @@ def rtime_timeline(table: RemediationTable, figsize: Tuple[int, int]=None, inclu
         y += 0.5
         hlines.append(y)
         yticks.append((y + start_y) / 2 - 0.25)
+        
+        repo = repo.split("/")[-1]
         ytick_labels.append(repo)
         y += 0.5
     
@@ -223,6 +234,7 @@ def rtime_timeline(table: RemediationTable, figsize: Tuple[int, int]=None, inclu
 
     legend_handles = [Line2D([0], [0], color=color, marker="o", linestyle="", label=label)
                 for label, color in legend.items()]
-    ax.legend(handles=legend_handles, loc="lower right", fontsize=10)
+    ax.legend(handles=legend_handles, loc="upper center",
+              bbox_to_anchor=(0.5, 1.1), fontsize=10)
 
     return fig, ax

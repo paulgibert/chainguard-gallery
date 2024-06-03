@@ -61,7 +61,7 @@ from tqdm import tqdm
 
 # Local
 from .stat import RemediationTable, Remediation, concat
-from .fetch import fetch_images
+from .fetch import fetch_images, fetch_chainguard_images
 
 
 @dataclass(frozen=True)
@@ -204,7 +204,7 @@ def _collect_image_remediations(scans: Iterable) -> List[Remediation]:
     return remediations
 
 
-def _image_handler(image: dict) -> pd.DataFrame:
+def _image_handler(image: dict, client: MongoClient) -> pd.DataFrame:
     """
     Collects the remediations from an image's scans.
     """
@@ -213,11 +213,11 @@ def _image_handler(image: dict) -> pd.DataFrame:
         "repository": image["repository"],
         "tag": image["tag"],
     }
-    with MongoClient(os.environ["MONGO_URI"]) as client:
-        collection = client["gallery"]["cves"]
-        scans = collection.find(query).sort([("scan_start", ASCENDING)])
-        remediations = _collect_image_remediations(scans)
-        return RemediationTable.from_remediations(image, remediations)
+
+    collection = client["gallery"]["cves"]
+    scans = collection.find(query).sort([("scan_start", ASCENDING)])
+    remediations = _collect_image_remediations(scans)
+    return RemediationTable.from_remediations(image, remediations)
 
 
 def fetch_remediations() -> RemediationTable:
@@ -228,6 +228,28 @@ def fetch_remediations() -> RemediationTable:
         A `RemediationTable` of the remediations found.
     """
     images = fetch_images()
+
+    # Having some issues with Mongo and multiprocess requests
+    # Use sync fetch for now
+    # with mp.Pool(mp.cpu_count()) as pool:
+    #     rtables = list(tqdm(pool.imap_unordered(_image_handler, images),
+    #                     desc="Collecting remediations",
+    #                     total=len(images)))
+    rtables= []
+    with MongoClient(os.environ["MONGO_URI"]) as client:
+        for img in tqdm(images, desc="Collecting remediations"):
+            rtables.append(_image_handler(img, client))
+    return concat(rtables)
+
+
+def fetch_chainguard_remediations() -> RemediationTable:
+    """
+    Fetches all Chainguard images scans from gallery and computes remediations.
+
+    Returns:
+        A `RemediationTable` of the remediations found.
+    """
+    images = fetch_chainguard_images()
 
     with mp.Pool(mp.cpu_count()) as pool:
         rtables = list(tqdm(pool.imap_unordered(_image_handler, images),

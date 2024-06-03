@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 
 # 3rd party
+import pandas as pd
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
 # Local
@@ -20,6 +21,15 @@ def fetch_images() -> List[Dict]:
     with MongoClient(os.environ["MONGO_URI"]) as client:
         collection = client["gallery"]["images"]
         return list(collection.find())
+    
+
+def fetch_chainguard_images() -> List[Dict]:
+    """
+    Pull the list of chainguard images from mongo and save.
+    """
+    with MongoClient(os.environ["MONGO_URI"]) as client:
+        collection = client["gallery"]["images"]
+        return list(collection.find({"registry": "cgr.dev"}))
     
 
 def global_first_scan() -> datetime:
@@ -42,7 +52,7 @@ def image_first_scan(image: Dict) -> datetime:
         scan = collection.find_one({"registry": image["registry"],
                                     "repository": image["repository"],
                                     "tag": image["tag"]}, sort=[("scan_start", ASCENDING)])
-        return scan["scan_start"]
+        return pd.to_datetime(scan["scan_start"])
 
 
 def images_first_scan() -> Dict[Tuple[str, str], datetime]:
@@ -64,7 +74,7 @@ def images_first_scan() -> Dict[Tuple[str, str], datetime]:
         ]
 
         results = collection.aggregate(pipeline)
-        return {(d["_id"]["registry"], d["_id"]["repository"]): d["first_scan"]
+        return {(d["_id"]["registry"], d["_id"]["repository"]): pd.to_datetime(d["first_scan"])
                 for d in results}
 
 
@@ -75,4 +85,4 @@ def global_latest_scan() -> datetime:
     with MongoClient(os.environ["MONGO_URI"]) as client:
         collection = client["gallery"]["cves"]
         scan = collection.find_one({}, sort=[("scan_start", DESCENDING)])
-        return scan["scan_start"]
+        return pd.to_datetime(scan["scan_start"])

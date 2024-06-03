@@ -46,7 +46,7 @@ class RemediationTable:
         return self._df["remediated_at"].max()
 
     def resolve_edge_cases(self, first_seen_at: bool=True,
-                           remediated_at: bool=True) -> pd.DataFrame:
+                           remediated_at: bool=True):
         df = self._df.copy()
 
         if remediated_at:
@@ -65,6 +65,11 @@ class RemediationTable:
                     seen[key] = image_first_scan(image)
                 
                 df.at[i, "first_seen_at"] = seen[key]
+        
+        # Calculate remedation time columns
+        
+        df["rtime"] = pd.to_datetime(df["remediated_at"]) - pd.to_datetime(df["first_seen_at"])
+        df["rtime"] = df["rtime"].dt.total_seconds() / 3600
         
         return RemediationTable(df)
 
